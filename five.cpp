@@ -1,76 +1,109 @@
+#include <GL/glut.h>
 #include <iostream>
-#include <vector>
+#include <string>
+#include <cctype>
 #include <cmath>
-#include <cstring>
 
 using namespace std;
 
-// Функция рисования треугольника Серпинского
-// x, y - координаты левого нижнего угла
-// size - размер стороны в пикселях
-// depth - глубина рекурсии (0 - только целый треугольник)
-// grid - массив символов (2D), где ' ' - пусто, '#' - закрашено
-void drawSierpinski(int x, int y, int size, int depth, vector<vector<char>>& grid) {
-    if (depth == 0) {
-        // Рисуем заполненный треугольник
-        for (int i = 0; i < size; i++) {
-            for (int j = 0; j <= i; j++) {
-                grid[y - i][x + j] = '#';
-            }
+int depth;
+
+bool isInteger(const std::string& s) {
+    if (s.empty()) return false;
+    for (char c : s) {
+        if (!isdigit(c)) return false;
+    }
+    return true;
+}
+
+bool isValidDepth(int d) {
+    return (d >= 0 && d <= 7);
+}
+
+int inputDepth() {
+    string input;
+    int d;
+    
+    while (true) {
+        cout << "Введите глубину рекурсии (0-7): ";
+        cin >> input;
+        
+        if (input.empty()) {
+            cout << "Ошибка: строка пуста\n";
+            continue;
         }
+        
+        if (!isInteger(input)) {
+            cout << "Ошибка: введите целое число (0-7)\n";
+            continue;
+        }
+        
+        d = stoi(input);
+        
+        if (!isValidDepth(d)) {
+            cout << "Ошибка: глубина должна быть от 0 до 7\n";
+            continue;
+        }
+        
+        break;
+    }
+    
+    return d;
+}
+
+void drawTriangle(float x1, float y1, float x2, float y2, float x3, float y3) {
+    glBegin(GL_TRIANGLES);
+    glVertex2f(x1, y1);
+    glVertex2f(x2, y2);
+    glVertex2f(x3, y3);
+    glEnd();
+}
+
+void sierpinski(float x1, float y1, float x2, float y2, float x3, float y3, int d) {
+    if (d == 0) {
+        drawTriangle(x1, y1, x2, y2, x3, y3);
         return;
     }
     
-    int newSize = size / 2;
+    float x12 = (x1 + x2) / 2;
+    float y12 = (y1 + y2) / 2;
+    float x23 = (x2 + x3) / 2;
+    float y23 = (y2 + y3) / 2;
+    float x31 = (x3 + x1) / 2;
+    float y31 = (y3 + y1) / 2;
     
-    // Три меньших треугольника (без центрального)
-    // Нижний левый
-    drawSierpinski(x, y, newSize, depth - 1, grid);
-    // Нижний правый
-    drawSierpinski(x + newSize, y, newSize, depth - 1, grid);
-    // Верхний
-    drawSierpinski(x + newSize / 2, y - newSize, newSize, depth - 1, grid);
-    
-    // Центральный треугольник не рисуется (остаётся пустым)
+    sierpinski(x1, y1, x12, y12, x31, y31, d - 1);
+    sierpinski(x12, y12, x2, y2, x23, y23, d - 1);
+    sierpinski(x31, y31, x23, y23, x3, y3, d - 1);
 }
 
-int main() {
-    cout << "ФРАКТАЛ: ТРЕУГОЛЬНИК СЕРПИНСКОГО" << endl;
-    cout << "Вариант 2" << endl;
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(0, 0, 0);
     
-    int depth;
-    cout << "Введите глубину рекурсии (0 - 7, рекомендуемая 4-5 для консоли): ";
-    cin >> depth;
+    float w = glutGet(GLUT_WINDOW_WIDTH);
+    float h = glutGet(GLUT_WINDOW_HEIGHT);
     
-    if (depth < 0) depth = 0;
-    if (depth > 7) {
-        cout << "Глубина 7 — максимальная для консоли. Установлено 7." << endl;
-        depth = 7;
-    }
+    sierpinski(w/2, 50, 50, h-50, w-50, h-50, depth);
     
-    // Размер стороны треугольника в ячейках
-    int size = pow(2, depth);
-    int width = size * 2;
-    int height = size;
+    glFlush();
+}
+
+int main(int argc, char** argv) {
+    depth = inputDepth();
     
-    // Создаём сетку для рисования (все пробелы)
-    vector<vector<char>> grid(height, vector<char>(width, ' '));
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutInitWindowSize(800, 600);
+    glutCreateWindow("Треугольник Серпинского");
+    glClearColor(1, 1, 1, 1);
+    gluOrtho2D(0, 800, 600, 0);
+    glutDisplayFunc(display);
     
-    // Рисуем треугольник Серпинского
-    drawSierpinski(0, height - 1, size, depth, grid);
+    cout << "\nГлубина: " << depth << endl;
+    cout << "Количество треугольников: " << (int)pow(3, depth) << endl;
     
-    // Выводим результат
-    cout << "\nТреугольник Серпинского (глубина = " << depth << "):\n" << endl;
-    
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            cout << grid[i][j];
-        }
-        cout << endl;
-    }
-    
-    cout << "Примечание: '#' — закрашенная область, пробел — пустота." << endl;
-    cout << "Глубина " << depth << " = " << pow(3, depth) << " маленьких треугольников" << endl;
+    glutMainLoop();
     
     return 0;
 }
